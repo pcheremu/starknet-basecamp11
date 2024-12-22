@@ -10,19 +10,30 @@ trait ICounter<T> {
 #[starknet::contract]
 mod Counter {
     use super::ICounter;
+    use openzeppelin_access::ownable::OwnableComponent;
     use starknet::ContractAddress;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
+    impl InternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
         counter: u32,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         CounterIncreased: CounterIncreased,
-        counterDecreased: CounterDecreased
+        counterDecreased: CounterDecreased,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event
     }
 
     #[derive(Drop, starknet::Event)]
@@ -35,9 +46,14 @@ mod Counter {
         counter: u32
     }
 
+    pub mod Errors {
+        pub const NEGATIVE_COUNTER: felt252 = 'Counter can\'t be negative';
+    }
+
     #[constructor]
-    fn constructor(ref self: ContractState, init_value: u32) {
+    fn constructor(ref self: ContractState, init_value: u32, owner: ContractAddress) {
         self.counter.write(init_value);
+        self.ownable.initializer(owner);
     }
 
     #[abi(embed_v0)]
@@ -55,12 +71,14 @@ mod Counter {
 
         fn decrease_counter(ref self: ContractState) {
             let old_counter = self.counter.read();
+            assert(old_counter > 0, Errors::NEGATIVE_COUNTER);
             let new_counter = old_counter - 1;
             self.counter.write(new_counter);
             self.emit(CounterDecreased { counter: new_counter });
         }
 
         fn reset_counter(ref self: ContractState) {
+            self.ownable.assert_only_owner();
             self.counter.write(0);
         }
     }
