@@ -1,0 +1,13 @@
+{
+  "name": "dev2",
+  "image": "starknetfoundation/starknet-dev:2.9.1",
+  "runArgs": ["--user", "appuser"],
+  "customizations": {
+      "vscode": {
+          "extensions": [
+              "StarkWare.cairo1",
+              "tamasfe.even-better-toml"
+          ]
+      }
+  }
+}
