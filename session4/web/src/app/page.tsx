@@ -1,9 +1,9 @@
 'use client';
-import { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 
 
-import { useBlockNumber, useAccount, useBalance, useSendTransaction, useTransactionReceipt, useReadContract } from '@starknet-react/core';
+import { useBlockNumber, useAccount, useBalance, useSendTransaction, useTransactionReceipt, useReadContract, useContract } from '@starknet-react/core';
 import { BlockNumber, RpcProvider } from 'starknet';
 import { ABI } from "../abis/abi";
 import { type Abi } from 'starknet';
@@ -13,7 +13,7 @@ const Page: FC = () => {
 
   // Step 1 --> Read the latest block -- Start
   const { data: blockNumberData, isLoading: blockNumberIsLoading, isError: blockNumberIsError } = useBlockNumber({
-    blockIdentifier: 'latest'
+    blockIdentifier: 'latest' as BlockNumber
   });
   const workshopEnd = 450000;
   // Step 1 --> Read the latest block -- End
@@ -40,10 +40,59 @@ const Page: FC = () => {
   // Step 3 --> Read counter from contract -- End
 
   // Step 4 --> Increase counter on contract -- Start
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await writeAsync();
+  }
+  const typedABI = ABI as Abi;
+  const {contract } = useContract({
+    abi: typedABI,
+    address: contractAddress,
+  });
+  const calls = useMemo(() => {
+    if (!userAddress || !contract) return [];
+    return [contract.populate("increase_counter")];
+  }, [userAddress, contract]);
+  const { send: writeAsync, data: writeData, isPending: writeIsPending } = useSendTransaction({ 
+    calls
+  }); 
+  const { data: waitData, status: waitStatus, isLoading: waitIsLoading, isError, error: waitError } = useTransactionReceipt({
+    hash: writeData?.transaction_hash,
+    watch: true
+  });
+  const LoadingState = ({ message }: { message: string }) => (
+    <div className="flex items-center space-x-2">
+      <div className="animate-spin">
+        <svg className="h-5 w-5 text-gray-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </div>
+      <span>{message}</span>
+    </div>
+  );
+  const buttonContent = () => {
+    if (writeIsPending) {
+      return <LoadingState message="Send..." />;
+    }
 
+    if (waitIsLoading) {
+      return <LoadingState message="Waiting for confirmation..." />;
+    }
+
+    if (waitStatus === "error") {
+      return <LoadingState message="Transaction rejected..." />;
+    }
+
+    if (waitStatus === "success") {
+      return "Transaction confirmed";
+    }
+
+    return "Send";
+  };
   // Step 4 --> Increase counter on contract -- End
 
   // Step 5 --> Reset balance -- Start
+  
   // Step 5 --> Reset balance -- End
 
   // Step 6 --> Get events from a contract -- Start
@@ -111,23 +160,26 @@ const Page: FC = () => {
           {/* Step 3 --> Read from a contract -- End */}
 
           {/* Step 4 --> Write to a contract -- Start */}
-          {/* <form className="bg-white p-4 border-black border">
+          <form onSubmit={handleSubmit} className="bg-white p-4 border-black border">
             <h3 className="text-lg font-bold mb-2">Increase Counter</h3>
             <button
               type="submit"
               className="mt-3 border border-black text-black font-regular py-2 px-4 bg-yellow-300 hover:bg-yellow-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              disabled={!userAddress || writeIsPending}
             >
-              Send
+              {buttonContent()}
             </button>
+            {writeData?.transaction_hash && (
             <a
-              href={`https://sepolia.voyager.online/tx/`}
+              href={`https://sepolia.voyager.online/tx/${writeData?.transaction_hash}`}
               target="_blank"
               className="block mt-2 text-blue-500 hover:text-blue-700 underline"
               rel="noreferrer"
             >
               Check TX on Sepolia
             </a>
-          </form> */}
+          )}
+          </form>
           {/* Step 4 --> Write to a contract -- End */}
 
           {/* Step 6 --> Get events from a contract -- Start */}
