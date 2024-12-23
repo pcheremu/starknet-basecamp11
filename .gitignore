@@ -2,3 +2,5 @@ target
 .snfoundry_cache/
 account.json
 keystore.json
+node_modules
+.next/
