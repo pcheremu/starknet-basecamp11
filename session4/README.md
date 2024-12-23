@@ -5,4 +5,4 @@
 3. go to `web` and run `npm install`
 4. start: `npm run dev` from `web` folder 
 5. http://localhost:3000/ should be accesable  
-6. 
+6. Uncomment steps based on the doc: https://www.starknet-react.com/docs
