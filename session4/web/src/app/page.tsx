@@ -1,5 +1,5 @@
 'use client';
-import React, { FC, useMemo } from 'react';
+import React, { FC, useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
 
@@ -7,6 +7,7 @@ import { useBlockNumber, useAccount, useBalance, useSendTransaction, useTransact
 import { BlockNumber, RpcProvider } from 'starknet';
 import { ABI } from "../abis/abi";
 import { type Abi } from 'starknet';
+import { formatAmount } from '@/lib/utils';
 
 const WalletBar = dynamic(() => import('../components/WalletBar'), { ssr: false })
 const Page: FC = () => {
@@ -96,6 +97,46 @@ const Page: FC = () => {
   // Step 5 --> Reset balance -- End
 
   // Step 6 --> Get events from a contract -- Start
+  type ContractEvent = {
+    from_address: string;
+    keys: string[];
+    data: string[];
+  }
+  const provider = useMemo(() => new RpcProvider({
+    nodeUrl: process.env.NEXT_PUBLIC_RPC_URL
+  }), []);
+  const [events, setEvents] = useState<ContractEvent[]>([]);
+  const lastCheckedBlockRef = useRef(0);
+  const { data: blockNumber } = useBlockNumber({ refetchInterval: 1000 });
+  const checkForEvents = useCallback(async (contract: any, currentBlockNumber:number) => {
+    if (currentBlockNumber <= lastCheckedBlockRef.current) return;
+    try {
+      const fromBlock = lastCheckedBlockRef.current + 1;
+      const fetchedEvents = await provider.getEvents({
+        address: contract.address,
+        from_block: {block_number: fromBlock},
+        to_block: {block_number: currentBlockNumber},
+        chunk_size: 500,
+      });
+      if (fetchedEvents && fetchedEvents.events) {
+        setEvents(prevEvents => [...prevEvents, ...fetchedEvents.events]);
+      }
+      lastCheckedBlockRef.current = currentBlockNumber;
+
+    } catch (error) {
+      console.error(error);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    if (contract && blockNumber) {
+      checkForEvents(contract, blockNumber);
+    }
+  }, [contract, blockNumber, checkForEvents]);
+  const lastFiveEvents = useMemo(() => {
+    return [...events].reverse().slice(0, 5);
+  }, [events]);
+  
   // Step 6 --> Get events from a contract -- End
 
   return (
@@ -183,7 +224,7 @@ const Page: FC = () => {
           {/* Step 4 --> Write to a contract -- End */}
 
           {/* Step 6 --> Get events from a contract -- Start */}
-          {/* <div className="overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr>
@@ -192,13 +233,15 @@ const Page: FC = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr key={1} className={'bg-gray-50'}>
-                  <td className="border-b border-gray-200 p-2">1</td>
-                  <td className="border-b border-gray-200 p-2 text-right">value</td>
-                </tr>
+                {lastFiveEvents.map((event, index) => (
+                  <tr key={index} className={'bg-gray-50'}>
+                    <td className="border-b border-gray-200 p-2">{lastFiveEvents.length - index}</td>
+                    <td className="border-b border-gray-200 p-2 text-right">{event.data.length > 0 ? formatAmount(event.data[0]) : "Initial value"}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </div> */}
+          </div>
           {/* Step 6 --> Get events from a contract -- End */}
 
         </div>
