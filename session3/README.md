@@ -1,4 +1,4 @@
-# Starknet-basecamp11 - Session2
+# Starknet-basecamp11 - Session3
 
 1. Use all data from `session2`
 2. Clean and fill `test_contract.cairo`

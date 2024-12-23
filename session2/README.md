@@ -8,7 +8,6 @@
 6. Use external contracts and libraries scarbs.xyz 
   - install `scarb add openzeppelin_access@0.20.0`
   - extend lib.cairo with `ownable` https://docs.openzeppelin.com/contracts-cairo/0.20.0/access
-  - 
 7. deploy contract 
   - create keystore: `starkli signer keystore new keystore.json` 
   - create account: `starkli account oz init account.json --keystore keystore.json`
@@ -18,4 +17,3 @@
   - deploy: `starkli deploy DECLARED_HASH_FROM_PREVIOUS_STEP INITIAL_VALUE YOUR_WALLET_PUB_ADDRESS --account account.json --keystore keystore.json` 
 8. Check the contract on https://sepolia.starkscan.co/contract/
  - use read/write tabs to play with it
-
